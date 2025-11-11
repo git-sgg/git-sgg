@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻页时钟与天气预报</title>
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <!-- 统一统一的 Tailwind.config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            dark: '#1F2937',
+            light: '#F3F4F6',
+            accent: '#F59E0B'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .flip-card {
+      position: relative;
+      width: 3.5rem;
+      height: 5rem;
+    }
+    @media (min-width: 768px) {
+      .flip-card {
+        width: 5rem;
+        height: 8rem;
+      }
+    }
+    .flip-card-inner {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transition: transform 300ms;
+      transform-style: preserve-3d;
+    }
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: bold;
+      border-radius: 0.5rem;
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    @media (min-width: 768px) {
+      .flip-card-front, .flip-card-back {
+        font-size: 5rem;
+      }
+    }
+    .flip-card-front {
+      background-color: #1f2937;
+    }
+    .flip-card-back {
+      background-color: #374151;
+      transform: rotateX(180deg);
+    }
+    .flip-card.flipping .flip-card-inner {
+      transform: rotateX(180deg);
+    }
+    .backface-hidden {
+      backface-visibility: hidden;
+    }
+    .transform-style-preserve-3d {
+      transform-style: preserve-3d;
+    }
+    .rotate-x-180 {
+      transform: rotateX(180deg);
+    }
+    .hourly-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+      transition: all 300ms;
+    }
+    .hourly-item:hover {
+      background-color: #eff6ff;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex flex-col items-center justify-center p-2">
+  <div class="w-full max-w-full md:max-w-6xl bg-white rounded-2xl shadow-lg shadow-xl overflow-hidden">
+    <!-- 翻页时钟模块 -->
+    <div class="p-4 md:p-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+      <div class="text-center mb-2">
+        <h1 class="text-2xl md:text-3xl font-bold text-white hidden">翻页时钟</h1>
+      </div>
+      <div class="flex justify-center items-center space-x-1 md:space-x-3">
+        <div id="hours-tens" class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">0</div>
+            <div class="flip-card-back">0</div>
+          </div>
+        </div>
+        <div id="hours-ones" class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">0</div>
+            <div class="flip-card-back">0</div>
+          </div>
+        </div>
+        <div class="text-3xl md:text-5xl font-bold mx-1">:</div>
+        <div id="minutes-tens" class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">0</div>
+            <div class="flip-card-back">0</div>
+          </div>
+        </div>
+        <div id="minutes-ones" class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">0</div>
+            <div class="flip-card-back">0</div>
+          </div>
+        </div>
+        <div class="text-3xl md:text-5xl font-bold mx-1">:</div>
+        <div id="seconds-tens" class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">0</div>
+            <div class="flip-card-back">0</div>
+          </div>
+        </div>
+        <div id="seconds-ones" class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">0</div>
+            <div class="flip-card-back">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="text-center mt-2 text-base md:text-lg" id="date-display"></div>
+    </div>
+
+    <!-- 天气预报模块 - 横向排布 -->
+    <div class="p-4 md:p-6 flex flex-col md:flex-row gap-4">
+      <!-- 当前天气 -->
+      <div class="w-full md:w-1/3 p-3 bg-white rounded-xl shadow-md">
+        <div class="text-center mb-2">
+          <h2 class="text-lg md:text-xl font-bold text-gray-800">北京朝阳</h2>
+        </div>
+        <div class="flex flex-col items-center">
+          <div id="current-temp" class="text-3xl md:text-4xl font-bold text-gray-800">--°C</div>
+          <div id="current-weather-text" class="text-base md:text-lg text-gray-600 mb-2">加载中...</div>
+          <div class="grid grid-cols-2 gap-3 w-full">
+            <div class="bg-blue-50 p-2 rounded-lg text-center">
+              <div class="text-xs text-gray-500">体感温度</div>
+              <div id="feels-like" class="text-base font-semibold text-gray-800">--°C</div>
+            </div>
+            <div class="bg-blue-50 p-2 rounded-lg text-center">
+              <div class="text-xs text-gray-500">湿度</div>
+              <div id="humidity" class="text-base font-semibold text-gray-800">--%</div>
+            </div>
+            <div class="bg-blue-50 p-2 rounded-lg text-center">
+              <div class="text-xs text-gray-500">风向</div>
+              <div id="wind-dir" class="text-base font-semibold text-gray-800">--</div>
+            </div>
+            <div class="bg-blue-50 p-2 rounded-lg text-center">
+              <div class="text-xs text-gray-500">风速</div>
+              <div id="wind-speed" class="text-base font-semibold text-gray-800">-- km/h</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 未来7天天气情况 -->
+      <div class="w-full md:w-2/3 p-3 bg-white rounded-xl shadow-md">
+        <div class="grid grid-cols-7 gap-1">
+          <!-- 第一行：周几 -->
+          <div class="text-center text-xs font-medium text-gray-600" id="day-0-weekday"></div>
+          <div class="text-center text-xs font-medium text-gray-600" id="day-1-weekday"></div>
+          <div class="text-center text-xs font-medium text-gray-600" id="day-2-weekday"></div>
+          <div class="text-center text-xs font-medium text-gray-600" id="day-3-weekday"></div>
+          <div class="text-center text-xs font-medium text-gray-600" id="day-4-weekday"></div>
+          <div class="text-center text-xs font-medium text-gray-600" id="day-5-weekday"></div>
+          <div class="text-center text-xs font-medium text-gray-600" id="day-6-weekday"></div>
+        </div>
+        
+        <div class="grid grid-cols-7 gap-1 mt-1">
+          <!-- 第二行：日期 -->
+          <div class="text-center text-xs text-gray-500" id="day-0-date"></div>
+          <div class="text-center text-xs text-gray-500" id="day-1-date"></div>
+          <div class="text-center text-xs text-gray-500" id="day-2-date"></div>
+          <div class="text-center text-xs text-gray-500" id="day-3-date"></div>
+          <div class="text-center text-xs text-gray-500" id="day-4-date"></div>
+          <div class="text-center text-xs text-gray-500" id="day-5-date"></div>
+          <div class="text-center text-xs text-gray-500" id="day-6-date"></div>
+        </div>
+        
+        <div class="grid grid-cols-7 gap-1 mt-2">
+          <!-- 第三行：天气情况 -->
+          <div class="text-center text-xs text-gray-700" id="day-0-weather"></div>
+          <div class="text-center text-xs text-gray-700" id="day-1-weather"></div>
+          <div class="text-center text-xs text-gray-700" id="day-2-weather"></div>
+          <div class="text-center text-xs text-gray-700" id="day-3-weather"></div>
+          <div class="text-center text-xs text-gray-700" id="day-4-weather"></div>
+          <div class="text-center text-xs text-gray-700" id="day-5-weather"></div>
+          <div class="text-center text-xs text-gray-700" id="day-6-weather"></div>
+        </div>
+        
+        <div class="mt-2 h-48">
+          <!-- 第四行：温度折线图 -->
+          <canvas id="temperature-chart"></canvas>
+        </div>
+      </div>
+      
+      <!-- 数据更新时间 -->
+      <div class="text-center mt-2 text-xs text-gray-500 md:absolute md:bottom-2 md:left-1/2 md:-translate-x-1/2">
+        <p>数据更新时间: <span id="update-time">--</span></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 翻页时钟功能
+    function setupFlipClock() {
+      const timeElements = {
+        hoursTens: document.getElementById('hours-tens'),
+        hoursOnes: document.getElementById('hours-ones'),
+        minutesTens: document.getElementById('minutes-tens'),
+        minutesOnes: document.getElementById('minutes-ones'),
+        secondsTens: document.getElementById('seconds-tens'),
+        secondsOnes: document.getElementById('seconds-ones')
+      };
+      
+      const dateDisplay = document.getElementById('date-display');
+      const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+      
+      function updateClock() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        // 更新日期显示
+        const year = now.getFullYear();
+        const month = months[now.getMonth()];
+        const date = now.getDate();
+        const weekday = weekdays[now.getDay()];
+        dateDisplay.textContent = `${year}年 ${month} ${date}日 ${weekday}`;
+        
+        // 更新时钟翻页
+        updateDigit(timeElements.hoursTens, hours[0]);
+        updateDigit(timeElements.hoursOnes, hours[1]);
+        updateDigit(timeElements.minutesTens, minutes[0]);
+        updateDigit(timeElements.minutesOnes, minutes[1]);
+        updateDigit(timeElements.secondsTens, seconds[0]);
+        updateDigit(timeElements.secondsOnes, seconds[1]);
+      }
+      
+      function updateDigit(element, digit) {
+        const front = element.querySelector('.flip-card-front');
+        const back = element.querySelector('.flip-card-back');
+        
+        if (front.textContent !== digit) {
+          element.classList.add('flipping');
+          back.textContent = digit;
+          setTimeout(() => {
+            front.textContent = digit;
+            element.classList.remove('flipping');
+          }, 300);
+        }
+      }
+      
+      // 初始化时钟
+      updateClock();
+      // 每秒更新一次
+      setInterval(updateClock, 1000);
+    }
+    
+    // 天气预报功能
+    function setupWeather() {
+      const currentTemp = document.getElementById('current-temp');
+      const currentWeatherText = document.getElementById('current-weather-text');
+      const feelsLike = document.getElementById('feels-like');
+      const humidity = document.getElementById('humidity');
+      const windDir = document.getElementById('wind-dir');
+      const windSpeed = document.getElementById('wind-speed');
+      const updateTime = document.getElementById('update-time');
+      
+      // 获取当前天气数据
+      async function getCurrentWeather() {
+        try {
+          const response = await fetch('https://nj7jpgqeu4.re.qweatherapi.com/v7/weather/now?location=116.44%2C39.92', {
+            headers: {
+              'X-QW-Api-Key': ''
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.code === '200') {
+            // 更新当前天气信息
+            currentTemp.textContent = `${data.now.temp}°C`;
+            currentWeatherText.textContent = data.now.text;
+            feelsLike.textContent = `${data.now.feelsLike}°C`;
+            humidity.textContent = `${data.now.humidity}%`;
+            windDir.textContent = data.now.windDir;
+            windSpeed.textContent = `${data.now.windSpeed} km/h`;
+            
+            // 更新数据时间
+            const updateTimeDate = new Date(data.updateTime);
+            updateTime.textContent = updateTimeDate.toLocaleString('zh-CN');
+          } else {
+            console.error('获取天气数据失败:', data);
+            currentWeatherText.textContent = '获取失败';
+          }
+        } catch (error) {
+          console.error('获取天气数据时发生错误:', error);
+          currentWeatherText.textContent = '获取失败';
+        }
+      }
+      
+      // 获取未来7天天气数据
+      async function get7DayWeather() {
+        try {
+          const response = await fetch('https://nj7jpgqeu4.re.qweatherapi.com/v7/weather/7d?location=116.44%2C39.92', {
+            headers: {
+              'X-QW-Api-Key': ''
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.code === '200') {
+            // 处理7天天气数据
+            display7DayWeather(data.daily);
+          } else {
+            console.error('获取7天天气数据失败:', data);
+          }
+        } catch (error) {
+          console.error('获取7天天气数据时发生错误:', error);
+        }
+      }
+      
+      // 显示7天天气数据
+      function display7DayWeather(dailyData) {
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        
+        // 准备图表数据
+        const chartLabels = [];
+        const maxTempData = [];
+        const minTempData = [];
+        
+        // 处理每一天的数据
+        dailyData.forEach((day, index) => {
+          const date = new Date(day.fxDate);
+          const weekday = weekdays[date.getDay()];
+          const formattedDate = `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+          
+          // 更新HTML元素
+          document.getElementById(`day-${index}-weekday`).textContent = weekday;
+          document.getElementById(`day-${index}-date`).textContent = formattedDate;
+          document.getElementById(`day-${index}-weather`).textContent = day.textDay;
+          
+          // 准备图表数据
+          chartLabels.push(weekday);
+          maxTempData.push(parseInt(day.tempMax));
+          minTempData.push(parseInt(day.tempMin));
+        });
+        
+        // 创建7天温度图表
+        create7DayTemperatureChart(chartLabels, maxTempData, minTempData);
+      }
+      
+      // 创建7天温度图表
+      function create7DayTemperatureChart(labels, maxTempData, minTempData) {
+        const ctx = document.getElementById('temperature-chart').getContext('2d');
+        
+        // 销毁现有图表（如果存在）
+        if (window.temperatureChart) {
+          window.temperatureChart.destroy();
+        }
+        
+        window.temperatureChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: '最高温度',
+                data: maxTempData,
+                borderColor: '#EF4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: false,
+                pointBackgroundColor: '#EF4444',
+                pointRadius: 3,
+                pointHoverRadius: 5
+              },
+              {
+                label: '最低温度',
+                data: minTempData,
+                borderColor: '#3B82F6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: false,
+                pointBackgroundColor: '#3B82F6',
+                pointRadius: 3,
+                pointHoverRadius: 5
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                  boxWidth: 12,
+                  font: {
+                    size: 10
+                  }
+                }
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                titleColor: '#1F2937',
+                bodyColor: '#1F2937',
+                borderColor: '#E5E7EB',
+                borderWidth: 1,
+                padding: 8,
+                callbacks: {
+                  label: function(context) {
+                    return `${context.dataset.label}: ${context.raw}°C`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  color: '#6B7280',
+                  font: {
+                    size: 9
+                  }
+                }
+              },
+              y: {
+                grid: {
+                  color: 'rgba(229, 231, 235, 0.5)'
+                },
+                ticks: {
+                  color: '#6B7280',
+                  font: {
+                    size: 10
+                  },
+                  callback: function(value) {
+                    return value + '°C';
+                  }
+                }
+              }
+            },
+            interaction: {
+              mode: 'nearest',
+              axis: 'x',
+              intersect: false
+            }
+          }
+        });
+      }
+      
+      // 初始化天气数据
+      getCurrentWeather();
+      get7DayWeather();
+      
+      // 每30分钟更新一次天气数据
+      setInterval(() => {
+        getCurrentWeather();
+        get7DayWeather();
+      }, 30 * 60 * 1000);
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      setupFlipClock();
+      setupWeather();
+    });
+  </script>
+</body>
+</html>
