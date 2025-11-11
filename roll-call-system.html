@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信号与系统 - 随机点名系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36BFFA',
+                        accent: '#722ED1',
+                        dark: '#1D2129',
+                        signal: '#0FC6C2',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .animate-bounce-slow {
+                animation: bounce 2s infinite;
+            }
+            .name-transition {
+                transition: all 0.3s ease-in-out;
+            }
+            .name-hover:hover {
+                transform: translateY(-2px);
+                background-color: rgba(22, 93, 255, 0.08);
+            }
+            .signal-wave {
+                background: linear-gradient(90deg, rgba(22,93,255,0.05) 0%, rgba(15,198,194,0.1) 50%, rgba(22,93,255,0.05) 100%);
+                background-size: 200% 100%;
+                animation: wave 8s linear infinite;
+            }
+            @keyframes wave {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+            .btn-pulse {
+                animation: pulse 1.5s infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen font-sans">
+    <!-- 页面容器 -->
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- 标题区域 - 移除副标题 -->
+        <header class="text-center mb-12 relative overflow-hidden rounded-2xl p-2 signal-wave">
+            <div class="relative z-10">
+                <h1 class="text-[clamp(1.8rem,5vw,3rem)] font-bold text-dark mb-3 text-shadow flex items-center justify-center">
+                    <i class="fa-solid fa-wave-square text-signal mr-3"></i>信号与系统
+                    <span class="text-primary ml-4">随机点名系统</span>
+                </h1>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左侧：名单展示区域 - 移除学号显示 -->
+            <div class="lg:col-span-1 bg-white rounded-xlrounded-xl shadow-md p-6 h-[520px] overflow-y-auto border-t-4 border-signal">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-dark flex items-center">
+                        <i class="fa-solid fa-list-ol text-primary mr-2"></i>学生名单
+                    </h2>
+                    <span class="text-sm text-gray-500 bg-blue-50 px-2 py-1 rounded-full">
+                        共 <span id="totalCount" class="font-medium text-primary">40</span> 人
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="nameList">
+                    <!-- 名单将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <!-- 右侧：点名控制和结果展示 - 移除学号显示 -->
+            <div class="lg:col-span-2 flex flex-col">
+                <!-- 结果展示区域 -->
+                <div class="bg-white rounded-xl shadow-md p-8 mb-6 flex-grow flex flex-col items-center justify-start border-t-4 border-primary relative">
+                    <!-- 装饰元素 -->
+                    <div class="absolute top-4 right-4 text-gray-100 text-5xl">
+                        <i class="fa-solid fa-signal"></i>
+                    </div>
+                    <h2 class="text-xl font-semibold text-dark mb-6 flex items-center z-10 text-center">
+                        <i class="fa-solid fa-bullseye text-accent mr-2"></i>当前点名结果
+                    </h2>
+                    <div id="resultDisplay" class="w-full text-center py-14 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 relative z-10">
+                        <p class="text-gray-500 text-lg">请点击下方"开始点名"按钮</p>
+                        <div id="selectedName" class="text-[clamp(2rem,8vw,4rem)] font-bold text-primary mt-4 hidden">
+                            --
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 控制按钮区域 -->
+                <div class="bg-white rounded-xl-xl shadow-md p-6 flex justify-center space-x-6 border-t-4 border-accent">
+                    <button id="startBtn" class="px-8 py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-all duration-300 flex items-center shadow-lg hover:shadow-xl btn-pulse">
+                        <i class="fa-solid fa-play mr-2"></i>开始点名
+                    </button>
+                    <button id="stopBtn" class="px-8 py-3 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-all duration-300 flex items-center shadow-lg hover:shadow-xl hidden">
+                        <i class="fa-solid fa-stop mr-2"></i>停止
+                    </button>
+                    <button id="resetBtn" class="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-all duration-300 flex items-center shadow-lg hover:shadow-xl">
+                        <i class="fa-solid fa-refresh mr-2"></i>重置
+                    </button>
+                    <button id="editBtn" class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-all duration-300 flex items-center shadow-lg hover:shadow-xl">
+                        <i class="fa-solid fa-pen-to-square mr-2"></i>编辑配置
+                    </button>
+                </div>
+            </div>
+            <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-8 max-w-2xl w-full mx-4">
+                    <h3 class="text-xl font-semibold mb-4">系统配置编辑</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">课程标题</label>
+                            <input id="editTitle" type="text" class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">学生名单（每行一个姓名）</label>
+                            <textarea id="editNames" class="w-full h-64 px-3 py-2 border rounded-lg font-mono"></textarea>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button id="saveHtml" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                                保存为新HTML
+                            </button>
+                            <button id="closeEdit" class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 功能说明区域 -->
+        <div class="mt-10 bg-white rounded-xl shadow-md p-6 border-l-4 border-signal">
+            <h3 class="text-lg font-semibold text-dark mb-3 flex items-center">
+                <i class="fa-solid fa-info-circle text-signal mr-2"></i>使用说明
+            </h3>
+            <ul class="text-gray-600 space-y-2 list-disc pl-5">
+                <li>点击"开始点名"按钮启动随机选择，名单将快速滚动，停止后随机选中</li>
+                <li>支持键盘快捷键：空格键控制开始/停止，Ctrl+R重置系统</li>
+                <li>可直接点击左侧名单中的学生姓名进行手动选择</li>
+                <li>编辑后可导出新的html文件，打开使用即可</li>
+            </ul>
+        </div>
+
+        <!-- 页脚 -->
+        <footer class="mt-16 text-center text-gray-500 text-sm">
+            <p>信号与系统课程点名系统 &copy; 2025 | 适用于课堂互动教学</p>
+        </footer>
+    </div>
+
+    <script>
+        // 信号与系统课程学生名单
+        const names = [
+            "屈浩", "张天放", "王伟佳", "杨秀鑫", "朱旭", 
+            "王诗怡", "范杨嘉希", "叶柏明", "常昊", "达尼亚·吾斯曼", 
+            "高源", "耿昊天", "龚谦一", "何文乐", "金旭冉", 
+            "李宇", "刘渊", "罗泽鑫", "孙瑞阳", "孙宇泽", 
+            "涂佩", "王一凡", "王元海", "王智杰", "伍星铸", 
+            "许云钊", "杨金贺", "张嘉毅", "张一超", "朱斌", 
+            "阿依迪达尔·阿依托勒", "陈筱曦", "迪丽热巴·艾合买提", 
+            "何钰莹", "李季芳", "罗丹君", "吕鸣函", "盛蕊", 
+            "岳可鑫", "仲怡安"
+        ];
+
+        // DOM元素
+        const nameListEl = document.getElementById('nameList');
+        const selectedNameEl = document.getElementById('selectedName');
+        const resultDisplayEl = document.getElementById('resultDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const totalCountEl = document.getElementById('totalCount');
+
+        const editModal = document.getElementById('editModal');
+        const editBtn = document.getElementById('editBtn');
+        const closeEdit = document.getElementById('closeEdit');
+        const saveHtml = document.getElementById('saveHtml');
+
+        // 当前配置数据
+        let currentConfig = {
+            title: '信号与系统 随机点名系统',
+            names: [...names] // 使用原始名单初始化
+        };
+
+        // 打开编辑弹窗
+        function openEditor() {
+            document.getElementById('editTitle').value = currentConfig.title;
+            document.getElementById('editNames').value = currentConfig.names.join('\n');
+            editModal.classList.remove('hidden');
+        }
+
+        // 生成新的HTML文件
+        function generateNewHTML() {
+            // 获取编辑后的标题和名单
+            const newTitle = document.getElementById('editTitle').value.trim() || '随机点名系统';
+            const newNames = document.getElementById('editNames').value
+                .split('\n')
+                .map(n => n.trim())
+                .filter(n => n.length > 0);
+
+            // 获取body内容，并确保editModal是隐藏状态
+            let bodyHtml = document.body.innerHTML;
+            bodyHtml = bodyHtml.replace(
+                /(<div id="editModal"[^>]*class=")(.*?)(")/,
+                '$1fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50$3'
+            );
+
+            // 构建完整HTML内容
+            const newHTML = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${newTitle}</title>
+    ${document.head.innerHTML}
+</head>
+<body>
+    ${bodyHtml.replace(
+                /const names = \[[\s\S]*?\];/,
+                `const names = ${JSON.stringify(newNames, null, 4)};`
+            )}
+    <script>
+        // 替换标题显示
+        document.addEventListener('DOMContentLoaded', () => {
+            const titleEl = document.querySelector('h1');
+            if (titleEl) {
+                titleEl.innerHTML = '<i class="fa-solid fa-wave-square text-signal mr-3"></i>${newTitle.replace(/'/g, "\\'")}';
+            }
+        });
+    <\/script>
+</body>
+</html>`;
+
+            // 创建下载
+            const blob = new Blob([newHTML], {type: 'text/html'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${newTitle}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 事件绑定
+        editBtn.addEventListener('click', openEditor);
+        closeEdit.addEventListener('click', () => editModal.classList.add('hidden'));
+        saveHtml.addEventListener('click', generateNewHTML);
+
+        // 更新初始化函数以读取当前配置
+        document.addEventListener('DOMContentLoaded', () => {
+            initNameList();
+            // 从h1标签读取初始标题
+            const titleEl = document.querySelector('h1');
+            currentConfig.title = titleEl.textContent.replace(/\s+/g, ' ').trim();
+        });
+
+        // 更新总人数显示
+        totalCountEl.textContent = names.length;
+
+        // 点名状态变量
+        let isRolling = false;
+        let rollInterval;
+        let lastSelectedIndex = -1;
+
+        // 初始化：渲染名单 - 移除学号相关代码
+        function initNameList() {
+            nameListEl.innerHTML = '';
+            names.forEach((name, index) => {
+                const nameItem = document.createElement('div');
+                nameItem.className = 'px-4 py-2.5 rounded-lg border border-gray-200 name-transition name-hover cursor-pointer flex items-center justify-center';
+                nameItem.textContent = name;
+                nameItem.dataset.index = index;
+                nameItem.addEventListener('click', () => selectNameManually(index));
+                nameListEl.appendChild(nameItem);
+            });
+        }
+
+        // 手动选择名字 - 移除学号相关逻辑
+        function selectNameManually(index) {
+            if (isRolling) return;
+            
+            // 清除之前的选择状态
+            clearSelection();
+            
+            // 设置新的选择状态
+            const selectedItem = document.querySelector(`[data-index="${index}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('bg-primary/20', 'border-primary', 'shadow-sm');
+                
+                // 显示结果（仅显示姓名）
+                selectedNameEl.textContent = names[index];
+                selectedNameEl.classList.remove('hidden');
+                selectedNameEl.classList.add('animate-bounce-slow');
+                
+                // 更新提示文本
+                const promptText = resultDisplayEl.querySelector('p');
+                if (promptText) {
+                    promptText.textContent = '手动选择结果';
+                }
+                
+                // 保存最后选择的索引
+                lastSelectedIndex = index;
+            }
+        }
+
+        // 清除选择状态
+        function clearSelection() {
+            // 清除名单中的选中状态
+            document.querySelectorAll('#nameList > div').forEach(item => {
+                item.classList.remove('bg-primary/20', 'border-primary', 'shadow-sm');
+            });
+            
+            // 清除结果显示的动画
+            selectedNameEl.classList.remove('animate-bounce-slow');
+        }
+
+        // 开始随机点名（核心功能）- 移除学号相关逻辑
+        function startRolling() {
+            if (isRolling) return;
+            
+            isRolling = true;
+            startBtn.classList.add('hidden');
+            stopBtn.classList.remove('hidden');
+            selectedNameEl.classList.remove('hidden', 'animate-bounce-slow');
+            
+            // 清除之前的选择
+            clearSelection();
+            
+            // 更新提示文本
+            const promptText = resultDisplayEl.querySelector('p');
+            if (promptText) {
+                promptText.textContent = '正在随机选择...';
+            }
+            
+            // 快速切换名字（模拟信号波动效果）
+            let counter = 0;
+            rollInterval = setInterval(() => {
+                // 确保不会连续选中同一个人
+                let randomIndex;
+                do {
+                    randomIndex = Math.floor(Math.random() * names.length);
+                } while (randomIndex === lastSelectedIndex && names.length > 1);
+                
+                // 更新显示（仅显示姓名）
+                selectedNameEl.textContent = names[randomIndex];
+                
+                // 高亮显示当前名字在列表中的位置
+                clearSelection();
+                const currentItem = document.querySelector(`[data-index="${randomIndex}"]`);
+                if (currentItem) {
+                    currentItem.classList.add('bg-primary/20', 'border-primary', 'shadow-sm');
+                }
+                
+                // 逐渐减慢速度（模拟信号衰减效果）
+                counter++;
+                if (counter > 12) {
+                    clearInterval(rollInterval);
+                    rollInterval = setInterval(() => {
+                        let newRandomIndex;
+                        do {
+                            newRandomIndex = Math.floor(Math.random() * names.length);
+                        } while (newRandomIndex === lastSelectedIndex && names.length > 1);
+                        
+                        selectedNameEl.textContent = names[newRandomIndex];
+                        
+                        clearSelection();
+                        const newCurrentItem = document.querySelector(`[data-index="${newRandomIndex}"]`);
+                        if (newCurrentItem) {
+                            newCurrentItem.classList.add('bg-primary/20', 'border-primary', 'shadow-sm');
+                        }
+                    }, 120);
+                }
+            }, 60);
+        }
+
+        // 停止随机点名
+        function stopRolling() {
+            if (!isRolling) return;
+            
+            clearInterval(rollInterval);
+            isRolling = false;
+            startBtn.classList.remove('hidden');
+            stopBtn.classList.add('hidden');
+            
+            // 保存最后选择的索引
+            const currentName = selectedNameEl.textContent;
+            lastSelectedIndex = names.indexOf(currentName);
+            
+            // 添加选中动画
+            selectedNameEl.classList.add('animate-bounce-slow');
+            
+            // 高亮显示最终选择的名字
+            clearSelection();
+            const finalItem = document.querySelector(`[data-index="${lastSelectedIndex}"]`);
+            if (finalItem) {
+                finalItem.classList.add('bg-primary/20', 'border-primary', 'shadow-sm');
+            }
+            
+            // 更新提示文本
+            const promptText = resultDisplayEl.querySelector('p');
+            if (promptText) {
+                promptText.textContent = '点名完成，选中结果如下';
+            }
+        }
+
+        // 重置点名系统
+        function resetSystem() {
+            clearInterval(rollInterval);
+            isRolling = false;
+            lastSelectedIndex = -1;
+            
+            // 重置UI状态
+            startBtn.classList.remove('hidden');
+            stopBtn.classList.add('hidden');
+            selectedNameEl.classList.add('hidden');
+            selectedNameEl.classList.remove('animate-bounce-slow');
+            
+            // 清除所有选择状态
+            clearSelection();
+            
+            // 恢复提示文本
+            const promptText = resultDisplayEl.querySelector('p');
+            if (promptText) {
+                promptText.textContent = '请点击下方"开始点名"按钮';
+            }
+        }
+
+        // 事件监听（绑定开始点名功能）
+        startBtn.addEventListener('click', startRolling);
+        stopBtn.addEventListener('click', stopRolling);
+        resetBtn.addEventListener('click', resetSystem);
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', initNameList);
+
+        // 键盘快捷键支持
+        document.addEventListener('keydown', (e) => {
+            // 空格键：快速控制开始/停止
+            if (e.code === 'Space') {
+                // 如果编辑弹窗打开，则不触发全局空格逻辑（让弹窗内的输入/编辑能正常使用空格）
+                if (!editModal.classList.contains('hidden')) {
+                    return; // 弹窗打开时忽略空格的全局处理
+                }
+                e.preventDefault(); // 阻止页面默认的滚动行为
+                isRolling ? stopRolling() : startRolling();
+            }
+
+            // Ctrl+R：重置系统（仍然可用，如果你也想在弹窗打开时禁用它，把同样的判断加上）
+            if (e.key.toLowerCase() === 'r' && e.ctrlKey) {
+                e.preventDefault();
+                resetSystem();
+            }
+        });
+    </script>
+</body>
+</html>
